@@ -261,6 +261,11 @@ const wss = new WebSocket.Server({ server, maxPayload: 20000 });
  * } */
 const sessions = new Map();
 
+// Basic connection abuse protection.
+// Limits one IP to 10 simultaneous WebSocket sessions.
+const ipConnections = new Map();
+const MAX_CONNECTIONS_PER_IP = 10;
+
 /** ordered list of sessionIds currently waiting for a match */
 const queue = [];
 
@@ -408,6 +413,15 @@ wss.on("connection", (ws, req) => {
     "unknown";
 
   ws.clientIp = ip;
+
+  const currentConnections = ipConnections.get(ip) || 0;
+
+  if (currentConnections >= MAX_CONNECTIONS_PER_IP) {
+    ws.close(1008, "Too many connections from this network.");
+    return;
+  }
+
+  ipConnections.set(ip, currentConnections + 1);
 
   const sessionId = genId("tingle_session");
   sessions.set(sessionId, {
@@ -660,8 +674,25 @@ wss.on("connection", (ws, req) => {
     }
   });
 
-  ws.on("close", () => cleanupSession(sessionId));
-  ws.on("error", () => cleanupSession(sessionId));
+  function releaseIpConnection() {
+    const count = ipConnections.get(ip) || 0;
+
+    if (count <= 1) {
+      ipConnections.delete(ip);
+    } else {
+      ipConnections.set(ip, count - 1);
+    }
+  }
+
+  ws.on("close", () => {
+    releaseIpConnection();
+    cleanupSession(sessionId);
+  });
+
+  ws.on("error", () => {
+    releaseIpConnection();
+    cleanupSession(sessionId);
+  });
 });
 
 // Remove users who have been waiting too long.
