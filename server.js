@@ -1,3 +1,4 @@
+const helmet = require("helmet");
 const { deviceIdentities, reports } = require("./storage");
 /**
  * TINGLE - prototype signaling & matchmaking server
@@ -85,10 +86,12 @@ function isValidDeviceId(raw) {
 }
 
 const app = express();
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(express.json({ limit: "10kb" }));
 app.use(express.static(__dirname));
 
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocket.Server({ server, maxPayload: 20000 });
 
 /** sessionId -> {
  *   ws, name, deviceId:string|null, callId:string|null,
@@ -235,7 +238,15 @@ function forwardSignal(fromId, msg) {
   });
 }
 
-wss.on("connection", (ws) => {
+wss.on("connection", (ws, req) => {
+  const ip =
+    req.headers["cf-connecting-ip"] ||
+    req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+    req.socket.remoteAddress ||
+    "unknown";
+
+  ws.clientIp = ip;
+
   const sessionId = genId("tingle_session");
   sessions.set(sessionId, {
     ws,
