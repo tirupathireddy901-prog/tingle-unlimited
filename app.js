@@ -272,6 +272,13 @@
       state.ws.send(JSON.stringify(obj));
     }
   }
+\n  // Keep the signaling connection alive on mobile networks.
+  setInterval(() => {
+    if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+      send({ type: "heartbeat" });
+    }
+  }, 25000);
+
 
   function handleServerMessage(msg) {
     switch (msg.type) {
