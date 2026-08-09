@@ -23,7 +23,8 @@ const path = require("path");
 
 const PORT = process.env.PORT || 3000;
 // No call duration cap - calls run unlimited as long as both sides stay connected.
-const SESSION_IDLE_TIMEOUT_MS = 5 * 60 * 1000; // expire idle sessions
+const SESSION_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+const QUEUE_TIMEOUT_MS = 10 * 60 * 1000; // expire idle sessions
 const RATE_LIMIT_WINDOW_MS = 10 * 1000;
 const RATE_LIMIT_MAX_MSGS = 40; // generous but bounds abuse/flooding
 const MAX_NAME_LEN = 30;
@@ -527,6 +528,7 @@ wss.on("connection", (ws, req) => {
         }
         if (!session.inQueue) {
           session.inQueue = true;
+          session.queueStartedAt = Date.now();
           queue.push(sessionId);
         }
         tryMatch();
@@ -661,6 +663,33 @@ wss.on("connection", (ws, req) => {
   ws.on("close", () => cleanupSession(sessionId));
   ws.on("error", () => cleanupSession(sessionId));
 });
+
+// Remove users who have been waiting too long.
+setInterval(() => {
+  const now = Date.now();
+
+  for (const sessionId of [...queue]) {
+    const session = sessions.get(sessionId);
+
+    if (!session) {
+      removeFromQueue(sessionId);
+      continue;
+    }
+
+    if (
+      session.inQueue &&
+      session.queueStartedAt &&
+      now - session.queueStartedAt > QUEUE_TIMEOUT_MS
+    ) {
+      removeFromQueue(sessionId);
+
+      safeSend(sessionId, {
+        type: "queue_timeout",
+        message: "Matchmaking timed out. Please try again."
+      });
+    }
+  }
+}, 30 * 1000);
 
 // Sweep idle sessions periodically so the queue never fills with ghosts.
 setInterval(() => {
