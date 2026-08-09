@@ -1,4 +1,5 @@
 const helmet = require("helmet");
+const { requireAdmin } = require("./admin");
 const { deviceIdentities, reports } = require("./storage");
 /**
  * TINGLE - prototype signaling & matchmaking server
@@ -89,6 +90,15 @@ const app = express();
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.json({ limit: "10kb" }));
 app.use(express.static(__dirname));
+
+
+app.get("/api/admin/status", requireAdmin, (req, res) => {
+  res.json({
+    ok: true,
+    service: "Tingle",
+    time: new Date().toISOString()
+  });
+});
 
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server, maxPayload: 20000 });
