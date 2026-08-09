@@ -311,6 +311,12 @@
       case "name_ok":
       case "heartbeat_ack":
         break;
+      case "queue_timeout":
+        showScreen("result");
+        $("result-reason").textContent =
+          msg.message || "Matchmaking timed out. Please try again.";
+        $("result-duration").textContent = "";
+        break;
       case "error":
         console.warn("Server error:", msg.message);
         if (document.getElementById("screen-agegate").classList.contains("active")) {
