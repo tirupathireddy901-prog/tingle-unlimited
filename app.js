@@ -43,6 +43,7 @@
     pendingCandidates: [],
     facingMode: "user",
     endedByMe: false,
+    iceRestartAttempts: 0,
   };
 
   const screens = document.querySelectorAll(".screen");
@@ -375,13 +376,17 @@
     pc.onconnectionstatechange = () => {
       const status = { connected: "Good", connecting: "Connecting", disconnected: "Weak", failed: "Reconnecting" }[pc.connectionState];
       if (status) $("net-status").textContent = status;
-      if (pc.connectionState === "connected") startCallTimer();
-      // A "failed" state usually means the original ICE negotiation
-      // couldn't establish a path (e.g. a network change mid-call).
-      // An ICE restart re-gathers candidates without tearing down the
-      // whole call, instead of leaving the user stuck on a dead connection.
+      if (pc.connectionState === "connected") {
+        state.iceRestartAttempts = 0;
+        startCallTimer();
+      }
+
+      // Recover from temporary network/NAT changes.
       if (pc.connectionState === "failed" && state.role === "initiator") {
-        restartIce();
+        if (state.iceRestartAttempts < 3) {
+          state.iceRestartAttempts += 1;
+          restartIce();
+        }
       }
     };
 
