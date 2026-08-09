@@ -1,0 +1,14 @@
+{
+  "name": "tingle",
+  "version": "0.1.0",
+  "description": "Tingle - free 5-minute random 1-to-1 video call prototype (WebRTC + WebSocket, no paid services)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "ws": "^8.17.0"
+  },
+  "license": "UNLICENSED"
+}

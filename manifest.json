@@ -1,0 +1,10 @@
+{
+  "name": "Tingle",
+  "short_name": "Tingle",
+  "description": "Meet. Talk. Connect. Random 30-minute video conversations.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0b12",
+  "theme_color": "#0b0b12",
+  "icons": []
+}

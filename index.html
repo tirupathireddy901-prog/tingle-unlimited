@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Tingle — Meet. Talk. Connect.</title>
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#08080d" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ===================== LANDING ===================== -->
+  <section class="screen active" id="screen-landing">
+    <div class="brand-block">
+      <div class="logo-mark" aria-hidden="true">
+        <span class="logo-mark-ring"></span>
+        <span class="logo-mark-core">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12a4 4 0 1 0 4-4"/><path d="M16 12a4 4 0 1 0-4 4"/></svg>
+        </span>
+      </div>
+      <h1 class="logo">TINGLE</h1>
+      <p class="tagline">Meet. Talk. Connect.</p>
+      <p class="lede">Random 1-to-1 video conversations with people who are ready to talk.</p>
+    </div>
+    <div class="cta-stack">
+      <button class="btn btn-primary btn-lg" id="btn-start-tingle">
+        <svg class="btn-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2.5"/></svg>
+        <span>Start Tingle</span>
+      </button>
+      <button class="btn btn-ghost" id="btn-how">How It Works</button>
+    </div>
+    <div class="badge-18">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L14.71 3.86a2 2 0 0 0-3.42 0Z"/></svg>
+      <span>18+ ONLY</span>
+    </div>
+    <footer class="landing-footer">
+      <a href="#" data-legal="privacy">Privacy</a>
+      <a href="#" data-legal="terms">Terms</a>
+      <a href="#" data-legal="guidelines">Community Guidelines</a>
+      <a href="#" data-legal="safety">Safety</a>
+    </footer>
+  </section>
+
+  <!-- ===================== HOW IT WORKS ===================== -->
+  <section class="screen" id="screen-how">
+    <div class="panel">
+      <h2>How Tingle works</h2>
+      <ol class="steps">
+        <li>Enter your date of birth and pick a display name.</li>
+        <li>Allow your camera and mic, and preview yourself.</li>
+        <li>We match you with one random person who's also ready.</li>
+        <li>Talk as long as you both want — end the call whenever you like.</li>
+        <li>Block or report anytime. Nothing is recorded.</li>
+      </ol>
+      <button class="btn btn-primary" data-back="landing">Back</button>
+    </div>
+  </section>
+
+  <!-- ===================== 18+ GATE ===================== -->
+  <section class="screen" id="screen-agegate">
+    <div class="panel">
+      <h2>Tingle is for adults only.</h2>
+      <p class="muted">You must be 18 or older to use Tingle. Enter your date of birth to continue.</p>
+      <label class="field-label" for="input-birthdate">Date of birth</label>
+      <input class="text-input" type="date" id="input-birthdate" />
+      <p class="error-text" id="agegate-error"></p>
+      <p class="fineprint">This date is self-reported and checked against our records for repeat use — it is <strong>not</strong> a verified ID check. Entering a false date violates our Terms and repeat or reported violations result in a ban tied to this device.</p>
+      <button class="btn btn-primary btn-lg" id="btn-agegate-continue" disabled>Continue</button>
+    </div>
+  </section>
+
+  <!-- ===================== AGE DENIED ===================== -->
+  <section class="screen" id="screen-agedenied">
+    <div class="panel center">
+      <h2>Tingle is for adults only.</h2>
+      <p class="muted">Based on the date of birth entered, you don't meet the minimum age of 18 to use Tingle. You can't continue on this device.</p>
+      <button class="btn btn-ghost" data-back="landing">Back</button>
+    </div>
+  </section>
+
+  <!-- ===================== BANNED ===================== -->
+  <section class="screen" id="screen-banned">
+    <div class="panel center">
+      <h2>This device is temporarily restricted.</h2>
+      <p class="muted" id="banned-reason"></p>
+      <p class="muted" id="banned-until"></p>
+      <p class="fineprint">This is a prototype-level restriction, not a final decision — if you believe this is a mistake, there is no appeal flow yet.</p>
+      <button class="btn btn-ghost" data-back="landing">Back</button>
+    </div>
+  </section>
+
+  <!-- ===================== NAME ENTRY ===================== -->
+  <section class="screen" id="screen-name">
+    <div class="panel">
+      <h2>What's your name?</h2>
+      <input class="text-input" id="input-name" maxlength="30" placeholder="Display name" autocomplete="off" />
+      <p class="fineprint">2–30 characters. We only use this for the call — no phone, address, or ID needed.</p>
+      <p class="error-text" id="name-error"></p>
+      <button class="btn btn-primary btn-lg" id="btn-name-continue">Continue</button>
+    </div>
+  </section>
+
+  <!-- ===================== SAFETY NOTICE ===================== -->
+  <section class="screen" id="screen-safety">
+    <div class="panel">
+      <h2>Stay Safe</h2>
+      <p class="muted">Never share:</p>
+      <ul class="safety-list">
+        <li>Passwords or OTPs</li>
+        <li>Bank details</li>
+        <li>Home address</li>
+        <li>Private documents</li>
+      </ul>
+      <p class="muted">You can end or report a conversation at any time.</p>
+      <button class="btn btn-primary btn-lg" id="btn-safety-continue">Got it</button>
+    </div>
+  </section>
+
+  <!-- ===================== PERMISSION / PREVIEW ===================== -->
+  <section class="screen" id="screen-preview">
+    <div class="panel panel-wide">
+      <h2>Ready?</h2>
+      <p class="muted" id="permission-explainer">Camera and microphone access are required for a video conversation.</p>
+      <div class="preview-wrap">
+        <video id="local-preview" autoplay muted playsinline></video>
+        <div class="preview-overlay" id="preview-denied" hidden>
+          <p>Camera and microphone access are required for a video conversation.</p>
+          <button class="btn btn-primary" id="btn-request-permission">Allow Camera &amp; Microphone</button>
+        </div>
+      </div>
+      <div class="preview-controls">
+        <button class="icon-toggle" id="toggle-cam-preview" data-on="true" aria-label="Toggle camera">
+          <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2.5"/></svg>
+        </button>
+        <button class="icon-toggle" id="toggle-mic-preview" data-on="true" aria-label="Toggle microphone">
+          <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19v3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><rect x="9" y="2" width="6" height="12" rx="3"/></svg>
+        </button>
+      </div>
+      <p class="error-text" id="preview-error"></p>
+      <button class="btn btn-primary btn-lg" id="btn-start-tingle-real" disabled>Start Tingle</button>
+    </div>
+  </section>
+
+  <!-- ===================== SEARCHING ===================== -->
+  <section class="screen" id="screen-searching">
+    <div class="panel center">
+      <div class="pulse-dot">
+        <span class="pulse-ring"></span>
+        <span class="pulse-ring pulse-ring-2"></span>
+        <span class="pulse-core"></span>
+      </div>
+      <h2>Finding someone…</h2>
+      <button class="btn btn-ghost" id="btn-cancel-search">Cancel</button>
+    </div>
+  </section>
+
+  <!-- ===================== MATCH FOUND ===================== -->
+  <section class="screen" id="screen-matchfound">
+    <div class="panel center">
+      <h2>Someone's here 👋</h2>
+      <p class="muted" id="match-peer-name"></p>
+    </div>
+  </section>
+
+  <!-- ===================== CALL ===================== -->
+  <section class="screen" id="screen-call">
+    <div class="call-wrap">
+      <video id="remote-video" class="remote-video" autoplay playsinline></video>
+      <video id="local-video" class="local-video" autoplay muted playsinline></video>
+
+      <div class="call-topbar">
+        <span class="call-brand">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12a4 4 0 1 0 4-4"/><path d="M16 12a4 4 0 1 0-4 4"/></svg>
+          TINGLE
+        </span>
+        <span class="call-timer" id="call-timer">00:00</span>
+        <span class="net-status" id="net-status">
+          <span class="net-dot"></span>Good
+        </span>
+      </div>
+
+      <div class="call-banner" id="call-banner" hidden></div>
+
+      <div class="call-controls">
+        <button class="ctrl-btn" id="btn-toggle-mic" data-on="true" aria-label="Mute">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19v3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><rect x="9" y="2" width="6" height="12" rx="3"/></svg>
+        </button>
+        <button class="ctrl-btn" id="btn-toggle-cam" data-on="true" aria-label="Camera">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2.5"/></svg>
+        </button>
+        <button class="ctrl-btn" id="btn-switch-cam" aria-label="Switch camera">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2.1l4 4-4 4"/><path d="M3 12.6v-2a4 4 0 0 1 4-4h14"/><path d="M7 21.9l-4-4 4-4"/><path d="M21 11.4v2a4 4 0 0 1-4 4H3"/></svg>
+        </button>
+        <button class="ctrl-btn danger" id="btn-end-call" aria-label="End call">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" stroke="none"><path d="M3.6 12.2c-1-3.9 1.1-6.9 3.1-8.6.6-.5 1.5-.4 1.9.3l1.7 2.9c.4.6.3 1.4-.2 1.9l-1.3 1.2c-.3.3-.4.8-.2 1.2 1 1.9 2.6 3.5 4.5 4.5.4.2.9.1 1.2-.2l1.2-1.3c.5-.5 1.3-.6 1.9-.2l2.9 1.7c.7.4.8 1.3.3 1.9-1.7 2-4.7 4.1-8.6 3.1-3.8-1-7.1-4.4-8.4-8.4Z"/></svg>
+        </button>
+        <button class="ctrl-btn" id="btn-block" aria-label="Block">
+          <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m5.5 5.5 13 13"/></svg>
+        </button>
+        <button class="ctrl-btn" id="btn-report" aria-label="Report">
+          <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v18"/><path d="M4 4h13l-2.5 4L17 12H4"/></svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== END CALL CONFIRM MODAL ===================== -->
+  <div class="modal" id="modal-endcall" hidden>
+    <div class="modal-card">
+      <h3>End conversation?</h3>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="btn-endcall-stay">Stay</button>
+        <button class="btn btn-danger" id="btn-endcall-confirm">End Call</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== BLOCK CONFIRM MODAL ===================== -->
+  <div class="modal" id="modal-block" hidden>
+    <div class="modal-card">
+      <h3>Block this person?</h3>
+      <p class="muted">Blocked users won't be matched with you again during this prototype session.</p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="btn-block-cancel">Cancel</button>
+        <button class="btn btn-danger" id="btn-block-confirm">Block</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== REPORT MODAL ===================== -->
+  <div class="modal" id="modal-report" hidden>
+    <div class="modal-card">
+      <h3>Report</h3>
+      <select class="select-input" id="report-category">
+        <option value="harassment">Harassment</option>
+        <option value="sexual_misconduct">Sexual misconduct</option>
+        <option value="spam">Spam</option>
+        <option value="scam">Scam</option>
+        <option value="hate">Hate</option>
+        <option value="threat">Threat</option>
+        <option value="possible_minor">Possible minor</option>
+        <option value="other">Other</option>
+      </select>
+      <textarea class="textarea-input" id="report-description" maxlength="500" placeholder="Optional description"></textarea>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="btn-report-cancel">Cancel</button>
+        <button class="btn btn-danger" id="btn-report-submit">Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== RESULT ===================== -->
+  <section class="screen" id="screen-result">
+    <div class="panel center">
+      <h2>Conversation ended</h2>
+      <p class="muted" id="result-reason"></p>
+      <p class="muted" id="result-duration"></p>
+      <div class="cta-stack">
+        <button class="btn btn-primary btn-lg" id="btn-find-another">Find Another</button>
+        <button class="btn btn-ghost" id="btn-result-home">Home</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== ERROR ===================== -->
+  <section class="screen" id="screen-error">
+    <div class="panel center">
+      <h2>Something went wrong.</h2>
+      <p class="muted">Please try again.</p>
+      <button class="btn btn-primary" id="btn-error-retry">Try Again</button>
+    </div>
+  </section>
+
+  <!-- ===================== OFFLINE ===================== -->
+  <section class="screen" id="screen-offline">
+    <div class="panel center">
+      <h2>You're offline</h2>
+      <p class="muted">Tingle needs an internet connection for video calls. Video calling does not work offline.</p>
+      <button class="btn btn-primary" id="btn-offline-retry">Retry</button>
+    </div>
+  </section>
+
+  <!-- ===================== LEGAL PAGES ===================== -->
+  <section class="screen" id="screen-legal">
+    <div class="panel panel-wide legal-panel">
+      <h2 id="legal-title"></h2>
+      <div id="legal-body" class="legal-body"></div>
+      <button class="btn btn-primary" data-back="landing">Back</button>
+    </div>
+  </section>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
