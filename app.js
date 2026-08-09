@@ -259,8 +259,27 @@
       handleServerMessage(msg);
     });
     state.ws.addEventListener("close", () => {
-      if (document.getElementById("screen-call").classList.contains("active")) {
-        showResult("peer_disconnected", state.elapsedSeconds);
+      // During an active call, keep the call state alive and reconnect
+      // the signaling WebSocket instead of immediately ending the call.
+      if (document.getElementById("screen-call").classList.contains("active") && state.callId) {
+        if (navigator.onLine && !state.reconnectPending) {
+          state.reconnectPending = true;
+
+          setTimeout(() => {
+            state.reconnectPending = false;
+
+            if (!state.ws || state.ws.readyState === WebSocket.CLOSED) {
+              const reconnectDeviceId = state.deviceId;
+
+              connectWebSocket(() => {
+                send({
+                  type: "reconnect",
+                  deviceId: reconnectDeviceId
+                });
+              });
+            }
+          }, 2000);
+        }
         return;
       }
 
@@ -285,7 +304,7 @@
       state.ws.send(JSON.stringify(obj));
     }
   }
-\n  // Keep the signaling connection alive on mobile networks.
+  // Keep the signaling connection alive on mobile networks.
   setInterval(() => {
     if (state.ws && state.ws.readyState === WebSocket.OPEN) {
       send({ type: "heartbeat" });
@@ -317,6 +336,20 @@
         $("match-peer-name").textContent = `You're talking with ${msg.peerName}`;
         showScreen("matchfound");
         setTimeout(() => startCall(), 900);
+        break;
+      case "reconnected":
+        state.reconnectPending = false;
+        state.callId = msg.callId;
+        state.role = msg.role;
+        $("match-peer-name").textContent = `You're talking with ${msg.peerName}`;
+        showScreen("call");
+        restartCallAfterReconnect();
+        break;
+
+      case "reconnect_failed":
+        state.reconnectPending = false;
+        teardownCall();
+        showResult("peer_disconnected", state.elapsedSeconds);
         break;
       case "signal":
         handleSignal(msg);
@@ -394,6 +427,78 @@
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       send({ type: "signal", callId: state.callId, signalType: "offer", data: offer });
+    }
+  }
+
+  async function restartCallAfterReconnect() {
+    try {
+      if (!state.localStream) {
+        state.localStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        });
+      }
+
+      $("local-video").srcObject = state.localStream;
+
+      const oldPc = state.pc;
+      if (oldPc) {
+        try { oldPc.close(); } catch (_) {}
+      }
+
+      const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+      state.pc = pc;
+      state.pendingCandidates = [];
+
+      state.localStream.getTracks().forEach((track) => {
+        pc.addTrack(track, state.localStream);
+      });
+
+      pc.ontrack = (evt) => {
+        $("remote-video").srcObject = evt.streams[0];
+      };
+
+      pc.onicecandidate = (evt) => {
+        if (evt.candidate) {
+          send({
+            type: "signal",
+            callId: state.callId,
+            signalType: "candidate",
+            data: evt.candidate,
+          });
+        }
+      };
+
+      pc.onconnectionstatechange = () => {
+        const status = {
+          connected: "Good",
+          connecting: "Connecting",
+          disconnected: "Weak",
+          failed: "Reconnecting",
+        }[pc.connectionState];
+
+        if (status) $("net-status").textContent = status;
+
+        if (pc.connectionState === "connected") {
+          state.iceRestartAttempts = 0;
+          startCallTimer();
+        }
+      };
+
+      if (state.role === "initiator") {
+        const offer = await pc.createOffer({ iceRestart: true });
+        await pc.setLocalDescription(offer);
+
+        send({
+          type: "signal",
+          callId: state.callId,
+          signalType: "offer",
+          data: offer,
+        });
+      }
+    } catch (err) {
+      console.warn("Reconnect call setup failed:", err);
+      $("net-status").textContent = "Reconnecting";
     }
   }
 

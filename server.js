@@ -24,6 +24,7 @@ const path = require("path");
 const PORT = process.env.PORT || 3000;
 // No call duration cap - calls run unlimited as long as both sides stay connected.
 const SESSION_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+const RECONNECT_GRACE_MS = 30 * 1000;
 const QUEUE_TIMEOUT_MS = 10 * 60 * 1000; // expire idle sessions
 const RATE_LIMIT_WINDOW_MS = 10 * 1000;
 const RATE_LIMIT_MAX_MSGS = 40; // generous but bounds abuse/flooding
@@ -336,7 +337,7 @@ function startCall(a, b) {
   const startedAt = Date.now();
   // No timer: calls are unlimited and only end via user_ended,
   // peer_disconnected, block, or report.
-  calls.set(callId, { a, b, startedAt, timer: null });
+  calls.set(callId, { callId, a, b, startedAt, timer: null, reconnectTimer: null, disconnectedSessionId: null });
 
   const sa = sessions.get(a);
   const sb = sessions.get(b);
@@ -375,10 +376,43 @@ function endCall(callId, reason, enderSessionId) {
 function cleanupSession(sessionId) {
   const s = sessions.get(sessionId);
   if (!s) return;
+
   removeFromQueue(sessionId);
+
   if (s.callId) {
-    endCall(s.callId, "peer_disconnected", sessionId);
+    const call = calls.get(s.callId);
+
+    if (call) {
+      // Keep the disconnected session available during the reconnect grace
+      // period so a new WebSocket can reclaim the active call.
+      if (s.reconnectPending) return;
+
+      s.reconnectPending = true;
+      call.disconnectedSessionId = sessionId;
+
+      clearTimeout(call.reconnectTimer);
+      call.reconnectTimer = setTimeout(() => {
+        const currentCall = calls.get(call.callId);
+
+        if (!currentCall) {
+          sessions.delete(sessionId);
+          return;
+        }
+
+        const disconnected = sessions.get(sessionId);
+
+        // The old session is still present only while waiting for reconnect.
+        // If it is still marked pending, the grace period expired.
+        if (disconnected && disconnected.reconnectPending) {
+          sessions.delete(sessionId);
+          endCall(call.callId, "peer_disconnected", sessionId);
+        }
+      }, RECONNECT_GRACE_MS);
+
+      return;
+    }
   }
+
   sessions.delete(sessionId);
 }
 
@@ -456,6 +490,65 @@ wss.on("connection", (ws, req) => {
     }
     if (!msg || typeof msg.type !== "string") {
       safeSend(sessionId, { type: "error", message: "Invalid message." });
+      return;
+    }
+
+    if (msg.type === "reconnect") {
+      if (typeof msg.deviceId !== "string" || !isValidDeviceId(msg.deviceId)) {
+        safeSend(sessionId, { type: "error", message: "Invalid device identifier." });
+        return;
+      }
+
+      const oldSessionId = [...sessions.entries()].find(
+        ([id, old]) =>
+          id !== sessionId &&
+          old.deviceId === msg.deviceId &&
+          old.callId
+      )?.[0];
+
+      if (!oldSessionId) {
+        safeSend(sessionId, { type: "reconnect_failed" });
+        return;
+      }
+
+      const oldSession = sessions.get(oldSessionId);
+      const call = oldSession ? calls.get(oldSession.callId) : null;
+
+      if (!call || call.disconnectedSessionId !== oldSessionId) {
+        safeSend(sessionId, { type: "reconnect_failed" });
+        return;
+      }
+
+      clearTimeout(call.reconnectTimer);
+      call.reconnectTimer = null;
+      call.disconnectedSessionId = null;
+
+      session.deviceId = oldSession.deviceId;
+      session.name = oldSession.name;
+      session.callId = oldSession.callId;
+
+      // Replace the disconnected session in the active call.
+      const wasInitiator = call.a === oldSessionId;
+
+      if (wasInitiator) {
+        call.a = sessionId;
+      } else if (call.b === oldSessionId) {
+        call.b = sessionId;
+      }
+
+      oldSession.callId = null;
+      oldSession.reconnectPending = false;
+
+      safeSend(sessionId, {
+        type: "reconnected",
+        callId: session.callId,
+        role: wasInitiator ? "initiator" : "receiver",
+        peerName: wasInitiator
+          ? sessions.get(call.b)?.name || "Stranger"
+          : sessions.get(call.a)?.name || "Stranger",
+      });
+
+      sessions.delete(oldSessionId);
       return;
     }
 
