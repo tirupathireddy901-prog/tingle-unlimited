@@ -4,21 +4,21 @@ const path = require("path");
 const DATA_DIR = path.join(__dirname, "data");
 const DATA_FILE = path.join(DATA_DIR, "store.json");
 
+function emptyStore() {
+  return {
+    devices: {},
+    reports: [],
+    blocks: []
+  };
+}
+
 function ensureStore() {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
 
   if (!fs.existsSync(DATA_FILE)) {
-    fs.writeFileSync(
-      DATA_FILE,
-      JSON.stringify({
-        devices: {},
-        reports: [],
-        bans: [],
-        blocks: []
-      }, null, 2)
-    );
+    fs.writeFileSync(DATA_FILE, JSON.stringify(emptyStore(), null, 2));
   }
 }
 
@@ -28,96 +28,87 @@ function loadStore() {
   try {
     return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
   } catch {
-    return {
-      devices: {},
-      reports: [],
-      bans: [],
-      blocks: []
-    };
+    return emptyStore();
   }
 }
 
 let store = loadStore();
 
-function saveStore() {
-  ensureStore();
+let saveTimer = null;
 
-  const tempFile = DATA_FILE + ".tmp";
+function save() {
+  clearTimeout(saveTimer);
 
-  fs.writeFileSync(
-    tempFile,
-    JSON.stringify(store, null, 2)
-  );
-
-  fs.renameSync(tempFile, DATA_FILE);
+  saveTimer = setTimeout(() => {
+    try {
+      const temp = DATA_FILE + ".tmp";
+      fs.writeFileSync(temp, JSON.stringify(store, null, 2));
+      fs.renameSync(temp, DATA_FILE);
+    } catch (err) {
+      console.error("Storage save error:", err.message);
+    }
+  }, 100);
 }
 
-function getDevice(deviceId) {
-  return store.devices[deviceId] || null;
-}
+class PersistentDeviceMap {
+  get(key) {
+    const value = store.devices[key];
+    if (!value) return undefined;
 
-function createDevice(deviceId) {
-  if (!store.devices[deviceId]) {
-    store.devices[deviceId] = {
-      deviceId,
-      birthDate: null,
-      ageVerifiedAtLeast18: false,
-      reportsAgainst: 0,
-      bannedUntil: null,
-      banReason: null,
-      blockedDeviceIds: [],
-      firstSeen: Date.now()
-    };
+    if (Array.isArray(value.blockedDeviceIds)) {
+      value.blockedDeviceIds = new Set(value.blockedDeviceIds);
+    }
 
-    saveStore();
+    return value;
   }
 
-  return store.devices[deviceId];
-}
+  set(key, value) {
+    const copy = { ...value };
 
-function saveDevice(device) {
-  store.devices[device.deviceId] = device;
-  saveStore();
-}
+    if (copy.blockedDeviceIds instanceof Set) {
+      copy.blockedDeviceIds = [...copy.blockedDeviceIds];
+    }
 
-function addReport(report) {
-  store.reports.push(report);
-  saveStore();
-}
+    store.devices[key] = copy;
+    save();
+    return this;
+  }
 
-function addBan(ban) {
-  store.bans.push(ban);
-  saveStore();
-}
+  has(key) {
+    return Object.prototype.hasOwnProperty.call(store.devices, key);
+  }
 
-function addBlock(deviceA, deviceB) {
-  if (!store.blocks.some(
-    b => b.deviceA === deviceA && b.deviceB === deviceB
-  )) {
-    store.blocks.push({
-      deviceA,
-      deviceB,
-      createdAt: Date.now()
-    });
+  delete(key) {
+    const exists = this.has(key);
+    delete store.devices[key];
 
-    saveStore();
+    if (exists) save();
+
+    return exists;
+  }
+
+  get size() {
+    return Object.keys(store.devices).length;
   }
 }
 
-function isBlocked(deviceA, deviceB) {
-  return store.blocks.some(
-    b =>
-      (b.deviceA === deviceA && b.deviceB === deviceB) ||
-      (b.deviceA === deviceB && b.deviceB === deviceA)
-  );
+class PersistentReports {
+  push(report) {
+    store.reports.push(report);
+    save();
+    return store.reports.length;
+  }
+
+  get length() {
+    return store.reports.length;
+  }
 }
+
+const deviceIdentities = new PersistentDeviceMap();
+const reports = new PersistentReports();
 
 module.exports = {
-  getDevice,
-  createDevice,
-  saveDevice,
-  addReport,
-  addBan,
-  addBlock,
-  isBlocked
+  deviceIdentities,
+  reports,
+  saveStore: save
 };

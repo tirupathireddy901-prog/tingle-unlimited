@@ -1,3 +1,4 @@
+const { deviceIdentities, reports } = require("./storage");
 /**
  * TINGLE - prototype signaling & matchmaking server
  *
@@ -51,7 +52,6 @@ const THRESHOLD_BAN_MS = 24 * 60 * 60 * 1000;
  *   blockedDeviceIds: Set<deviceId>, reportsAgainst: number,
  *   bannedUntil: number|null, banReason: string|null, firstSeen: number
  * } */
-const deviceIdentities = new Map();
 
 function getOrCreateIdentity(deviceId) {
   let identity = deviceIdentities.get(deviceId);
@@ -103,7 +103,6 @@ const queue = [];
 const calls = new Map();
 
 /** very small in-memory report log - never exposed to clients */
-const reports = [];
 
 function genId(prefix) {
   return `${prefix}_${crypto.randomBytes(16).toString("hex")}`;
