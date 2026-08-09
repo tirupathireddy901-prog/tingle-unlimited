@@ -242,6 +242,15 @@ app.get("/api/admin/health", requireAdmin, (req, res) => {
   });
 });
 
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    service: "Tingle",
+    uptime: Math.floor(process.uptime()),
+    time: new Date().toISOString()
+  });
+});
+
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server, maxPayload: 20000 });
 
