@@ -100,6 +100,148 @@ app.get("/api/admin/status", requireAdmin, (req, res) => {
   });
 });
 
+
+// ---------- Protected Admin API ----------
+
+app.get("/api/admin/stats", requireAdmin, (req, res) => {
+  res.json({
+    ok: true,
+    sessions: sessions.size,
+    waiting: queue.length,
+    activeCalls: calls.size,
+    devices: deviceIdentities.size,
+    reports: reports.length,
+    uptimeSeconds: Math.floor(process.uptime()),
+    time: new Date().toISOString()
+  });
+});
+
+app.get("/api/admin/reports", requireAdmin, (req, res) => {
+  res.json({
+    ok: true,
+    reports: reports.map((report) => ({
+      id: report.id,
+      category: report.category,
+      description: report.description,
+      callId: report.callId,
+      reportedDeviceId: report.reportedDeviceId,
+      at: report.at
+    }))
+  });
+});
+
+app.get("/api/admin/devices", requireAdmin, (req, res) => {
+  const devices = [];
+
+  for (const [deviceId, identity] of deviceIdentities) {
+    devices.push({
+      deviceId,
+      birthDate: identity.birthDate,
+      ageVerifiedAtLeast18: identity.ageVerifiedAtLeast18,
+      reportsAgainst: identity.reportsAgainst,
+      bannedUntil: identity.bannedUntil,
+      banReason: identity.banReason,
+      firstSeen: identity.firstSeen,
+      blockedCount: identity.blockedDeviceIds
+        ? identity.blockedDeviceIds.size
+        : 0
+    });
+  }
+
+  res.json({
+    ok: true,
+    devices
+  });
+});
+
+app.post("/api/admin/ban", requireAdmin, (req, res) => {
+  const { deviceId, durationHours, reason } = req.body || {};
+
+  if (
+    typeof deviceId !== "string" ||
+    !deviceIdentities.has(deviceId)
+  ) {
+    return res.status(400).json({
+      error: "Invalid or unknown deviceId."
+    });
+  }
+
+  const hours = Number(durationHours);
+
+  if (!Number.isFinite(hours) || hours <= 0 || hours > 8760) {
+    return res.status(400).json({
+      error: "durationHours must be between 1 and 8760."
+    });
+  }
+
+  const identity = deviceIdentities.get(deviceId);
+
+  identity.bannedUntil = Date.now() + hours * 60 * 60 * 1000;
+  identity.banReason =
+    typeof reason === "string" && reason.trim()
+      ? reason.trim().slice(0, 200)
+      : "Admin ban";
+
+  deviceIdentities.set(deviceId, identity);
+
+  for (const [sessionId, session] of sessions) {
+    if (session.deviceId === deviceId) {
+      if (session.callId) {
+        endCall(session.callId, "user_ended", sessionId);
+      }
+
+      safeSend(sessionId, {
+        type: "banned",
+        until: identity.bannedUntil,
+        reason: identity.banReason
+      });
+    }
+  }
+
+  res.json({
+    ok: true,
+    deviceId,
+    bannedUntil: identity.bannedUntil,
+    reason: identity.banReason
+  });
+});
+
+app.post("/api/admin/unban", requireAdmin, (req, res) => {
+  const { deviceId } = req.body || {};
+
+  if (
+    typeof deviceId !== "string" ||
+    !deviceIdentities.has(deviceId)
+  ) {
+    return res.status(400).json({
+      error: "Invalid or unknown deviceId."
+    });
+  }
+
+  const identity = deviceIdentities.get(deviceId);
+
+  identity.bannedUntil = null;
+  identity.banReason = null;
+
+  deviceIdentities.set(deviceId, identity);
+
+  res.json({
+    ok: true,
+    deviceId,
+    message: "Device unbanned."
+  });
+});
+
+app.get("/api/admin/health", requireAdmin, (req, res) => {
+  res.json({
+    ok: true,
+    status: "healthy",
+    uptimeSeconds: Math.floor(process.uptime()),
+    memory: process.memoryUsage(),
+    time: new Date().toISOString()
+  });
+});
+
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server, maxPayload: 20000 });
 
