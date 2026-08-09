@@ -260,6 +260,18 @@
     state.ws.addEventListener("close", () => {
       if (document.getElementById("screen-call").classList.contains("active")) {
         showResult("peer_disconnected", state.elapsedSeconds);
+        return;
+      }
+
+      // Retry a short network interruption automatically.
+      if (navigator.onLine && !state.callId) {
+        setTimeout(() => {
+          if (!state.ws || state.ws.readyState === WebSocket.CLOSED) {
+            try {
+              connectWebSocket();
+            } catch (_) {}
+          }
+        }, 3000);
       }
     });
     state.ws.addEventListener("error", () => {
